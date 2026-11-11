@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: #0E1A33;
+  color: #FBF7EC;
+  font-family: Georgia, 'Times New Roman', serif;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  -webkit-tap-highlight-color: transparent;
+}
+.btn { @apply rounded-lg px-4 py-3 font-bold tracking-wide transition active:scale-95 disabled:opacity-40; }
+.btn-gold { @apply btn bg-gold text-navy; }
+.btn-ghost { @apply btn border border-gold/60 text-gold-light; }
+.card { @apply rounded-xl border border-gold/40 bg-navy-2/60 p-4; }
