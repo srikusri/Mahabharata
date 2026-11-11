@@ -10,7 +10,8 @@
     "preview": "vite preview --host",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "e2e": "node e2e/pairing.mjs"
+    "e2e": "node e2e/pairing.mjs",
+    "e2e:recovery": "node e2e/recovery.mjs"
   },
   "dependencies": {
     "jsqr": "^1.4.0",

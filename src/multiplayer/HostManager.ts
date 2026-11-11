@@ -44,6 +44,17 @@ export interface HostOptions {
   hostId?: string;
   pin?: string;
   now?: () => number;
+  /**
+   * Rebuild a room that is already in play (host reloaded, or a guest took over as host). Every seat starts offline and
+   * can be reclaimed with its saved secret, or with the room PIN (used after a migration, when old secrets are gone).
+   */
+  restore?: SeatsSnapshot;
+}
+
+export interface SeatsSnapshot {
+  players: LobbyPlayer[];
+  secrets: Record<string, string>;
+  version: number;
 }
 
 const MAX_PIN_ATTEMPTS = 3;
@@ -71,6 +82,7 @@ export class HostManager {
   private readonly secrets = new Map<string, string>();
   private players: LobbyPlayer[];
   private phase: 'lobby' | 'playing' = 'lobby';
+  private allowClaim = false;
   private version = 1;
   private timer: ReturnType<typeof setInterval> | null = null;
 
@@ -87,6 +99,19 @@ export class HostManager {
     this.players = [
       { id: this.hostId, name, tokenId: opts.hostToken, ready: true, connected: true, isHost: true },
     ];
+    if (opts.restore) {
+      this.phase = 'playing';
+      this.allowClaim = true;
+      this.version = opts.restore.version + 1;
+      this.players = opts.restore.players.map((p) => ({ ...p, isHost: p.id === this.hostId, connected: p.id === this.hostId, ready: true }));
+      if (!this.players.some((p) => p.id === this.hostId)) this.players.unshift({ id: this.hostId, name, tokenId: opts.hostToken as LobbyPlayer['tokenId'], ready: true, connected: true, isHost: true });
+      for (const [id, s] of Object.entries(opts.restore.secrets)) if (this.players.some((p) => p.id === id)) this.secrets.set(id, s);
+    }
+  }
+
+  /** What must be persisted to rebuild this room later. */
+  exportSeats(): SeatsSnapshot {
+    return { players: this.players.map((p) => ({ ...p })), secrets: Object.fromEntries(this.secrets), version: this.version };
   }
 
   publicLobby(): PublicLobby {
@@ -220,6 +245,15 @@ export class HostManager {
     if (existing) {
       const secret = this.secrets.get(id);
       if (resumeSecret && secret && safeEqual(resumeSecret, secret)) return this.resume(peer, existing);
+      // Restored/migrated room: an offline seat can be reclaimed with the room PIN (3 tries per connection).
+      if (this.allowClaim && !existing.connected && !existing.isHost) {
+        if (typeof p.pin === 'string' && safeEqual(p.pin, this.pin)) {
+          this.secrets.set(id, newSecret());
+          return this.resume(peer, existing);
+        }
+        peer.attempts++;
+        return this.reject(peer, peer.attempts >= MAX_PIN_ATTEMPTS ? 'TOO_MANY_ATTEMPTS' : 'BAD_PIN');
+      }
       return this.reject(peer, 'ID_IN_USE');
     }
     if (this.phase !== 'lobby') return this.reject(peer, 'GAME_STARTED');

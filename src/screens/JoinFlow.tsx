@@ -10,7 +10,7 @@ import { useStore } from '../state/connectionStore';
 type Stage = 'scan' | 'reply' | 'profile';
 
 export function JoinFlow() {
-  const { guestSession, guest, leave } = useStore();
+  const { guestSession, guest, leave, game, selfId, go } = useStore();
   const [stage, setStage] = useState<Stage>('scan');
   const [answer, setAnswer] = useState<string | null>(null);
   const [hostName, setHostName] = useState('');
@@ -72,6 +72,9 @@ export function JoinFlow() {
     });
   }, [stage, guest?.status, guestSession]);
 
+  // Rejoining a game in progress: if the host kept our seat we resume silently; otherwise (after a host change) we reclaim it with the PIN.
+  const seat = guest?.lobby?.players.find((p) => p.id === selfId && !p.connected);
+  const claim = stage === 'profile' && !!seat && (!guestSession?.resumeSecret || !!guest?.joinError);
   const taken = guest?.lobby?.players.map((p) => p.tokenId) ?? [];
   const clean = sanitizeName(name);
   const canJoin = !!clean && !!token && /^\d{4}$/.test(pin) && guest?.status === 'open';
@@ -107,7 +110,37 @@ export function JoinFlow() {
         </section>
       )}
 
-      {stage === 'profile' && (
+      {claim && seat && (
+        <section className="flex flex-col gap-4" data-testid="join-claim">
+          <p className="text-center">Rejoin as <b>{seat.name}</b></p>
+          <label className="flex flex-col gap-1 text-sm">
+            Host's PIN
+            <input
+              className="rounded border border-gold/50 bg-navy-2 p-3 text-center text-2xl tracking-[0.5em] text-ivory"
+              inputMode="numeric"
+              maxLength={4}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+              data-testid="claim-pin"
+            />
+          </label>
+          {guest?.joinError && (
+            <p role="alert" className="rounded border border-red-300/50 p-3 text-sm text-red-200" data-testid="join-error">
+              {REJECT_TEXT[guest.joinError]}
+            </p>
+          )}
+          <button
+            className="btn-gold"
+            disabled={!/^\d{4}$/.test(pin) || guest?.status !== 'open'}
+            data-testid="claim-join"
+            onClick={() => guestSession?.manager?.join({ pin, name: seat.name, tokenId: seat.tokenId })}
+          >
+            Rejoin
+          </button>
+        </section>
+      )}
+
+      {stage === 'profile' && !claim && (
         <section className="flex flex-col gap-4" data-testid="join-profile">
           <label className="flex flex-col gap-1 text-sm">
             Your name
@@ -170,7 +203,7 @@ export function JoinFlow() {
         </p>
       )}
 
-      <button className="btn-ghost" onClick={leave}>
+      <button className="btn-ghost" onClick={() => (game ? go('play') : leave())}>
         Back
       </button>
     </main>

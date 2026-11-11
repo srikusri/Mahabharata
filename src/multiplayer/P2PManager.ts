@@ -81,6 +81,8 @@ export class HostSession {
 
 export interface GuestSessionOptions {
   rtc?: RtcOptions;
+  /** Keep this player id (rejoining a seat after the host returned or changed). */
+  playerId?: string;
   onState?: (s: GuestState) => void;
   onGame?: (m: { game?: unknown; events?: unknown; error?: string }) => void;
   loadSaved?: () => Promise<SavedSession | null>;
@@ -106,7 +108,7 @@ export class GuestSession {
 
     this.dispose();
     const conn = new WebRTCConnection(this.opts.rtc);
-    const manager = new GuestManager({ roomId: sig.roomId, hostId: sig.hostId, playerId: resume?.playerId });
+    const manager = new GuestManager({ roomId: sig.roomId, hostId: sig.hostId, playerId: resume?.playerId ?? this.opts.playerId });
     manager.onChange = (s) => this.opts.onState?.(s);
     manager.onSession = (s) => this.opts.saveSession?.(s);
     manager.onGame = (m) => this.opts.onGame?.(m);

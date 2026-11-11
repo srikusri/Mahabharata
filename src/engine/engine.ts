@@ -460,6 +460,31 @@ export function applyAction(state: GameState, playerId: PlayerId, action: Action
   return { ok: true, state: s, events: c.ev };
 }
 
+/**
+ * Host-only override for a player who has gone offline: resolves whatever the game is waiting for
+ * and passes the turn. If the player is in debt, they are declared bankrupt (nothing else can be decided for them).
+ * Not reachable through guest actions; only HostGame calls it, after checking the player really is offline.
+ */
+export function forcePass(state: GameState): ActionResult {
+  if (state.turn.phase === 'over') return { ok: false, error: 'The game is over' };
+  const c: Ctx = { s: JSON.parse(JSON.stringify(state)) as GameState, ev: [] };
+  const { s } = c;
+  if (s.turn.phase === 'debt') {
+    const id = s.debts[0].debtor;
+    emit(c, 'forced', `${P(c, id).name} is offline and cannot settle the debt`, { playerId: id });
+    bankrupt(c, id);
+  } else {
+    const p = cur(c);
+    emit(c, 'forced', `${p.name} is offline; their turn is skipped`, { playerId: p.id });
+    s.pendingBuy = null;
+    s.pendingPeek = false;
+    s.turn.extraRoll = false;
+    advanceTurn(c);
+  }
+  s.version++;
+  return { ok: true, state: s, events: c.ev };
+}
+
 /** Thin stateful wrapper for callers that prefer an object (the host session). */
 export class GameEngine {
   constructor(public state: GameState) {}

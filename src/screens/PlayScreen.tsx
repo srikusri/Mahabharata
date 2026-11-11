@@ -3,6 +3,8 @@ import { SPACES, GROUP_COLOR } from '../engine/board';
 import type { GameEvent } from '../engine';
 import { Board, Ownership } from '../components/Board/Board';
 import { ActionBar } from '../components/Game/ActionBar';
+import { ConnectionLost } from '../components/Game/ConnectionLost';
+import { HostTools } from '../components/Game/HostTools';
 import { CardModal } from '../components/Game/CardModal';
 import { Dice } from '../components/Game/Dice';
 import { EventLog } from '../components/Game/EventLog';
@@ -15,7 +17,7 @@ import type { TokenId } from '../multiplayer/lobby';
 import { useStore } from '../state/connectionStore';
 
 export function PlayScreen() {
-  const { lobby, selfId, guest, role, leave, game, events, gameError, clearError, dispatch } = useStore();
+  const { lobby, selfId, guest, role, leave, game, events, gameError, clearError, dispatch, reconnect, takeOver, skipOffline, pin } = useStore();
   const [modal, setModal] = useState<GameEvent | null>(null);
   const [rollKey, setRollKey] = useState(0);
   const lastVersion = useRef(-1);
@@ -86,6 +88,9 @@ export function PlayScreen() {
         </div>
       )}
 
+      {role === 'guest' && guest?.status === 'closed' && game.turn.phase !== 'over' && (
+        <ConnectionLost game={game} lobby={lobby} selfId={selfId} onReconnect={reconnect} onTakeOver={takeOver} />
+      )}
       <ActionBar game={game} selfId={selfId} send={dispatch} />
       {me && lobbyMe && !me.bankrupt && (
         <PlayerDashboard player={lobbyMe} balance={me.cash} position={me.position} owned={ownedNames} isTurn={current.id === selfId} />
@@ -96,6 +101,7 @@ export function PlayScreen() {
       <PlayersStrip game={game} selfId={selfId} offline={offline} />
       {me && !me.bankrupt && <PropertyPanel game={game} selfId={selfId} send={dispatch} />}
       <EventLog log={game.log} />
+      {role === 'host' && game.turn.phase !== 'over' && <HostTools game={game} lobby={lobby} pin={pin} onSkip={skipOffline} />}
 
       <div className="flex flex-wrap justify-center gap-2 text-xs opacity-70">
         {Object.entries(GROUP_COLOR).map(([g, c]) => (

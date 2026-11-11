@@ -3,8 +3,8 @@
 A browser board game that runs entirely from static files on GitHub Pages. Players connect
 directly to each other over WebRTC; there is no backend, database or account.
 
-**Status: Phases 1-3 are built** (foundation, multiplayer connectivity, rules engine with host-validated play).
-Snapshots/host migration (Phase 4) and polish (Phase 5) are not here yet.
+**Status: Phases 1-4 are built** (foundation, connectivity, rules engine, snapshots / reconnect / host migration).
+UI polish (Phase 5) is not here yet.
 
 | Done | Not yet |
 | --- | --- |
@@ -161,15 +161,32 @@ Encoded from the print PDF: 1500 start, 200 salary, doubles (third double to Van
 - Bankruptcy: cash and properties go to the creditor (buildings cleared, mortgages kept) or the bank.
 - Unlimited building supply.
 
+## Recovery (Phase 4)
+
+There is no server, so recovery is built from what the devices already hold.
+
+| Situation | What happens |
+| --- | --- |
+| Host reloads / crashes | The host saves the full game (state, seats, secrets, PIN) to IndexedDB after every action. Home shows **Resume your hosted game**. Players tap **Rejoin the game you were in**, scan the host's code, and resume their seat silently (saved secret, no PIN). |
+| A guest drops or reloads | Host sees them offline under **Host tools**, taps **Reconnect a player** (QR exchange), and the guest resumes the same seat. If the game is waiting on them, the host can **Skip their turn** (a player who owes money is declared bankrupt instead). |
+| Host is gone for good | Any guest taps **Take over as host**. That phone rebuilds the game from the newest state it received and opens a new room with a new PIN. Each other player taps **Reconnect**, scans the new host, and reclaims their own seat by entering the new PIN. |
+
+Details and limits:
+- A reconnect still needs a fresh QR exchange (no signalling server). Seats, money, properties, buildings, turn and held cards are preserved exactly.
+- Guests never receive the dice generator or card order, so a migrated game **reshuffles the card decks** and restarts the dice from a new seed. Cards held by players stay with them.
+- A migrated game continues from the newest state the new host saw, which can be one action behind another guest's.
+- Seat reclaiming after a restore/migration is authenticated by the room PIN plus knowing the seat id (ids are visible to the table). It is a convenience gate for people sitting together, not strong security.
+- Guests that were never connected to the new host stay as offline seats; use Skip to keep the game moving.
+
 ## Known gaps
 
 - Reconnecting still needs a fresh QR exchange (no signalling server); only the seat and identity are preserved.
 - No TURN relay by design, so symmetric NATs on different networks can fail even with `?stun=1`.
-- The host is a single point of failure until Phase 4 (snapshots and host migration); a disconnected player's turn waits for them.
+- Host migration is manual (a person chooses to take over); there is no automatic election.
 - Not yet tested on real phones, and the game screen has had only desktop-browser e2e coverage.
 
 ## Dev aids
 
 - `#board-preview` (e.g. `http://localhost:5173/#board-preview`) shows the board with sample tokens.
-- `npm run e2e` drives two headless browsers through the whole pairing. It needs Playwright
+- `npm run e2e` drives two headless browsers through pairing and a round of play; `npm run e2e:recovery` covers reconnect after a reload and host migration with three browsers. It needs Playwright
   (`PLAYWRIGHT_MODULE=/path/to/playwright`) and `npx vite preview --port 4173` running.

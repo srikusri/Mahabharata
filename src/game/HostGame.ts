@@ -3,11 +3,13 @@
  * Guests only ever send Action requests; this validates each one with the engine, applies it, and
  * publishes each player's own view of the new state. Nothing here is rendered; the UI subscribes.
  */
-import { Action, ActionResult, GameEvent, GameState, NewPlayer, PublicState, applyAction, createGame, parseAction, publicView, randomSeed } from '../engine';
+import { Action, ActionResult, forcePass, GameEvent, GameState, NewPlayer, PublicState, applyAction, createGame, parseAction, publicView, randomSeed } from '../engine';
 import type { Settings } from '../engine';
 import type { HostManager } from '../multiplayer/HostManager';
 
 export interface HostGameOptions {
+  /** Continue an existing game (host reload or migration) instead of dealing a new one. */
+  state?: GameState;
   seed?: number;
   settings?: Partial<Settings>;
 }
@@ -17,14 +19,36 @@ export class HostGame {
   /** Host UI subscription: the host's own view plus the events of the action that produced it. */
   onView: ((view: PublicState, events: GameEvent[]) => void) | null = null;
 
+  /** Fired after every accepted action and whenever a seat is (re)claimed: persist here. */
+  onSnapshot: ((state: GameState) => void) | null = null;
+
   constructor(private readonly host: HostManager, players: NewPlayer[], opts: HostGameOptions = {}) {
-    this.state = createGame(players, opts.seed ?? randomSeed(), opts.settings);
+    this.state = opts.state ?? createGame(players, opts.seed ?? randomSeed(), opts.settings);
   }
 
   /** Called for every HostManager event. */
   handleHostEvent(e: { type: string; playerId?: string; payload?: Record<string, unknown> }): void {
     if (e.type === 'action' && e.playerId) this.handleRemote(e.playerId, e.payload ?? {});
-    else if ((e.type === 'resumed' || e.type === 'resync') && e.playerId) this.sendSnapshot(e.playerId);
+    else if ((e.type === 'resumed' || e.type === 'resync') && e.playerId) {
+      this.sendSnapshot(e.playerId);
+      if (e.type === 'resumed') this.onSnapshot?.(this.state); // a claim issues a new secret
+    }
+  }
+
+  /** Host override: skip an offline player's turn (or bankrupt them if they are the one who owes money). */
+  skipOffline(playerId: string): ActionResult {
+    const s = this.state;
+    const seat = this.host.publicLobby().players.find((p) => p.id === playerId);
+    if (!seat || seat.connected) return { ok: false, error: 'That player is online' };
+    const waitingOn = s.turn.phase === 'debt' ? s.debts[0]?.debtor : s.players[s.turn.index].id;
+    if (waitingOn !== playerId) return { ok: false, error: 'The game is not waiting for that player' };
+    const r = forcePass(s);
+    if (r.ok) {
+      this.state = r.state;
+      this.publishAll(r.events);
+      this.onSnapshot?.(this.state);
+    }
+    return r;
   }
 
   /** The host player's own action. */
@@ -56,6 +80,7 @@ export class HostGame {
     }
     this.state = r.state;
     this.publishAll(r.events);
+    this.onSnapshot?.(this.state);
     return r;
   }
 

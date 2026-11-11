@@ -2,6 +2,7 @@ export * from './types';
 export * from './engine';
 export * from './validator';
 export * from './view';
+export * from './snapshot';
 export * from './properties';
 export * from './cards';
 export * from './dice';
