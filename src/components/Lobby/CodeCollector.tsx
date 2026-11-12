@@ -28,6 +28,20 @@ export function CodeCollector({ onCode }: { onCode: (code: string) => void }) {
     [onCode],
   );
 
+  const [clipMsg, setClipMsg] = useState<string | null>(null);
+  const fromClipboard = async () => {
+    setClipMsg(null);
+    try {
+      const t = await navigator.clipboard.readText();
+      const before = done.current;
+      handleText(t);
+      if (!before && !done.current) setClipMsg('The clipboard does not hold a pairing code. Copy the code first.');
+    } catch {
+      setShowPaste(true);
+      setClipMsg('Could not read the clipboard. Paste the code into the box instead.');
+    }
+  };
+
   return (
     <div className="flex flex-col items-center gap-3">
       <QrScanner onText={handleText} />
@@ -36,9 +50,13 @@ export function CodeCollector({ onCode }: { onCode: (code: string) => void }) {
           Scanned {progress.have} of {progress.total}
         </div>
       )}
+      <button className="btn-ghost w-full max-w-[340px] py-2 text-sm" onClick={fromClipboard} data-testid="paste-clipboard">
+        Paste code from clipboard
+      </button>
+      {clipMsg && <p role="alert" className="max-w-[340px] text-center text-xs text-red-200">{clipMsg}</p>}
       {!showPaste ? (
         <button className="text-sm text-gold-light underline" onClick={() => setShowPaste(true)}>
-          Paste code instead
+          Type or paste code manually
         </button>
       ) : (
         <div className="flex w-full max-w-[340px] flex-col gap-2">

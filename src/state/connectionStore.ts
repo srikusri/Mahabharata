@@ -45,6 +45,9 @@ interface Store {
   go: (s: Screen) => void;
   startHost: (name: string, tokenId: TokenId) => void;
   startGuest: () => GuestSession;
+  /** An offer code that arrived through an invite link; the join screen consumes it. */
+  pendingOffer: string | null;
+  openInvite: (code: string) => void;
   leave: () => void;
 }
 
@@ -205,6 +208,12 @@ export const useStore = create<Store>((set, get) => ({
   skipOffline: (playerId) => {
     const r = get().hostGame?.skipOffline(playerId);
     if (r && !r.ok) set({ gameError: r.error });
+  },
+
+  pendingOffer: null,
+  openInvite: (code) => {
+    set({ pendingOffer: code });
+    get().startGuest();
   },
 
   startGuest: () => {

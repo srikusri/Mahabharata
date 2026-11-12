@@ -21,6 +21,8 @@ export function PanZoom({ children }: { children: ReactNode }) {
   const ptrs = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<number | null>(null);
   const lastTap = useRef(0);
+  const moved = useRef(false);
+  const start = useRef({ x: 0, y: 0 });
 
   const size = () => {
     const r = box.current?.getBoundingClientRect();
@@ -48,8 +50,9 @@ export function PanZoom({ children }: { children: ReactNode }) {
   }, []);
 
   const onDown = (e: React.PointerEvent) => {
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    moved.current = false;
+    start.current = { x: e.clientX, y: e.clientY };
     if (ptrs.current.size === 2) {
       const [a, b] = [...ptrs.current.values()];
       pinch.current = Math.hypot(a.x - b.x, a.y - b.y);
@@ -66,6 +69,11 @@ export function PanZoom({ children }: { children: ReactNode }) {
     ptrs.current.set(e.pointerId, cur);
     const { w, h, left, top } = size();
     if (ptrs.current.size === 1) {
+      if (!moved.current && Math.hypot(cur.x - start.current.x, cur.y - start.current.y) < 6) return;
+      if (!moved.current) {
+        moved.current = true;
+        try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ }
+      }
       setT((c) => clampT({ ...c, x: c.x + cur.x - prev.x, y: c.y + cur.y - prev.y }, w, h));
     } else if (ptrs.current.size === 2 && pinch.current) {
       const [a, b] = [...ptrs.current.values()];

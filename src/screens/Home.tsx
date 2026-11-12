@@ -37,6 +37,9 @@ export function Home() {
           You can still pair with "Paste code".
         </p>
       )}
+      <p className="text-xs opacity-70">
+        Host: tap Create New Game, then Add a player. Players: tap Join Game and scan the host's code, or just open the invite link the host sends you.
+      </p>
       <p className="text-xs opacity-60">2 to 6 players. No server, no account. Players connect directly to the host.</p>
     </main>
   );

@@ -43,7 +43,7 @@ async function readQr(page) {
 }
 async function feed(page, parts) {
   const box = page.getByTestId('paste-box');
-  if (!(await box.isVisible())) await page.getByText('Paste code instead').click();
+  if (!(await box.isVisible())) await page.getByText('Type or paste code manually').click();
   for (const p of [...parts].reverse()) {
     await box.fill(p);
     await page.getByTestId('paste-use').click();
@@ -90,7 +90,7 @@ async function finishMove(page) {
   for (let i = 0; i < 14; i++) {
     if (await page.getByTestId('card-modal').isVisible()) await page.getByTestId('card-modal').getByText('OK').click();
     else if (await page.getByTestId('end-turn').isVisible()) {
-      await page.waitForTimeout(400); // a card modal can appear just after the buttons
+      await page.waitForTimeout(900); // a card modal can appear just after the buttons
       if (!(await page.getByTestId('card-modal').isVisible())) return;
     }
     else if (await page.getByTestId('decline').isVisible()) await page.getByTestId('decline').click();
@@ -99,11 +99,25 @@ async function finishMove(page) {
     await page.waitForTimeout(400);
   }
 }
+async function dismissModal(page) {
+  if (await page.getByTestId('card-modal').isVisible().catch(() => false)) await page.getByTestId('card-modal').getByText('OK').click();
+}
 async function takeTurn(page) {
+  // A small state machine: roll / decline / close cards until End turn is available (doubles roll again).
   await page.getByTestId('roll').waitFor({ timeout: 10000 });
-  await page.getByTestId('roll').click();
-  await finishMove(page);
-  await page.getByTestId('end-turn').click();
+  for (let i = 0; i < 40; i++) {
+    const vis = (id) => page.getByTestId(id).isVisible().catch(() => false);
+    if (await vis('card-modal')) await page.getByTestId('card-modal').getByText('OK').click({ timeout: 2000 }).catch(() => {});
+    else if (await vis('roll')) await page.getByTestId('roll').click({ timeout: 2000 }).catch(() => {});
+    else if (await vis('decline')) await page.getByTestId('decline').click({ timeout: 2000 }).catch(() => {});
+    else if (await vis('end-turn')) {
+      await page.waitForTimeout(900);
+      if (await vis('card-modal')) continue;
+      if (await page.getByTestId('end-turn').click({ timeout: 2000 }).then(() => true, () => false)) return;
+    }
+    await page.waitForTimeout(350);
+  }
+  throw new Error('takeTurn did not finish');
 }
 const cashOf = async (page, name) => (await page.locator(`[data-player=${name}]`).textContent()).match(/(\d+) S/)[1];
 
@@ -154,12 +168,14 @@ try {
   log('both guests notice the host is gone');
   const bCash = await cashOf(b, 'Bhima');
   await a.locator('summary').click();
+  await dismissModal(a);
   await a.getByTestId('take-over').click();
   await a.getByTestId('host-tools').waitFor({ timeout: 8000 });
   const newPin = (await a.getByTestId('host-pin').textContent()).trim();
   expect(/^\d{4}$/.test(newPin), 'no new PIN');
   log('Arjuna is now host, PIN', newPin);
 
+  await dismissModal(b);
   await b.getByTestId('reconnect').click();
   await pair(a, b);
   await b.getByTestId('join-claim').waitFor({ timeout: 25000 });
@@ -174,12 +190,34 @@ try {
 
   // Whoever is up can act through the new host.
   const turnTitle = async (p) => (await p.getByTestId('turn-title').textContent()).trim();
-  const bTurn = (await turnTitle(b)) === 'Your turn';
+  let bTurn = false;
+  for (let i = 0; i < 40; i++) {
+    if (await b.getByTestId('roll').isVisible().catch(() => false)) { bTurn = true; break; }
+    if (await a.getByTestId('roll').isVisible().catch(() => false)) break;
+    await a.waitForTimeout(250);
+  }
+  void turnTitle;
   await (bTurn ? takeTurn(b) : takeTurn(a));
   await (bTurn ? a : b).getByTestId('roll').waitFor({ timeout: 10000 }).catch(() => {});
   log('play continues under the new host');
   await a.screenshot({ path: `${OUT}/11-new-host.png`, fullPage: true });
   await b.screenshot({ path: `${OUT}/12-guest-after-migration.png`, fullPage: true });
+  // Phase 5 UI: tapping a space opens its deed; wide screens get a two-column layout; mute persists.
+  await dismissModal(a);
+  await a.locator('[data-space="1"]').click();
+  await a.getByTestId('deed-modal').waitFor({ timeout: 3000 });
+  expect((await a.getByTestId('deed-modal').textContent()).includes('260'), 'deed shows rent table');
+  await a.screenshot({ path: `${OUT}/13-deed.png` });
+  await a.getByTestId('deed-modal').getByText('Close').click();
+  await a.getByTestId('mute').click();
+  expect((await a.getByTestId('mute').textContent()).includes('off'), 'mute toggles');
+  await a.setViewportSize({ width: 1280, height: 800 });
+  await a.waitForTimeout(400);
+  const bb = await a.locator('[data-space="0"]').boundingBox();
+  const lg = await a.getByTestId('players').boundingBox();
+  expect(lg.x >= bb.x + bb.width - 5, 'players column sits beside the board on wide screens');
+  await a.screenshot({ path: `${OUT}/14-desktop.png` });
+  log('deed popup, mute toggle and wide layout ok');
   log('\nPASS');
 } catch (e) {
   log('\nFAIL:', e.message);

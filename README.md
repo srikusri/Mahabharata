@@ -3,7 +3,7 @@
 A browser board game that runs entirely from static files on GitHub Pages. Players connect
 directly to each other over WebRTC; there is no backend, database or account.
 
-**Status: Phases 1-4 are built** (foundation, connectivity, rules engine, snapshots / reconnect / host migration).
+**Status: Phases 1-5 are built** (foundation, connectivity, rules engine, snapshots / reconnect / host migration, UI polish). Phase 6 is testing on real devices.
 UI polish (Phase 5) is not here yet.
 
 | Done | Not yet |
@@ -47,6 +47,14 @@ set **Settings > Pages > Source: GitHub Actions** once), then runs tests, builds
 
 `vite.config.ts` uses `base: './'` and a relative PWA scope, so no per-repo configuration is needed. Pages is https, which phones
 need for the camera and for installing the app to the home screen.
+
+## Easier joining (Phase 5b)
+
+- **Invite link instead of a QR**: on the invite screen the host taps "No camera? Send an invite link instead" (share sheet, or copy). The link is `.../#join=<code>`; the code sits in the URL fragment and is never sent to a server. Opening it takes the guest straight to the reply step. Players should open it in Safari or Chrome, not inside a chat app's built-in browser.
+- **Reply by message**: the guest can send the reply code with the share sheet; the host copies it and taps "Paste code from clipboard". Surrounding chat text is ignored.
+- **PIN filled in automatically**: the offer carries the PIN, so guests do not type it. The offer is single-use and the host must still accept the guest's reply, so this does not weaken the pairing; the PIN is still required to reclaim a seat after a host change.
+- Step indicators on both phones, clearer wording, and a "phone connected" note on the host.
+- `npm run e2e:link` covers the link path.
 
 ## How pairing works
 
@@ -177,6 +185,18 @@ Details and limits:
 - A migrated game continues from the newest state the new host saw, which can be one action behind another guest's.
 - Seat reclaiming after a restore/migration is authenticated by the room PIN plus knowing the seat id (ids are visible to the table). It is a convenience gate for people sitting together, not strong security.
 - Guests that were never connected to the new host stay as offline seats; use Skip to keep the game moving.
+
+## UI polish (Phase 5)
+
+- Tokens hop space by space (about 130 ms each); long or backward moves (cards, exile) jump. `src/ui/hop.ts` holds the pure helpers.
+- Floating +/- money on the player cards, a "Your turn" toast with a chime and vibration (Android; iOS Safari has no vibrate API).
+- Sounds are synthesized with WebAudio (no asset files). Audio starts after the first tap (iOS rule). The Sound button persists in localStorage.
+- Screen Wake Lock during a game, to reduce iOS / Android backgrounding dropping the P2P link.
+- `prefers-reduced-motion` disables animations and token hopping.
+- Tap any space for its deed: price, rent table, mortgage value, owner and level.
+- Two-column layout from the `lg` breakpoint (board sticks on the left); single column on phones.
+- Game-over screen shows the standings by net worth.
+- PWA: autoUpdate service worker precaches the app shell (about 514 KiB); installable, standalone.
 
 ## Known gaps
 

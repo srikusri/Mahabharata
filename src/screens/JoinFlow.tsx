@@ -2,15 +2,20 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CodeCollector } from '../components/Lobby/CodeCollector';
 import { ConnectionBadge } from '../components/Lobby/ConnectionBadge';
 import { QrDisplay } from '../components/Lobby/QrDisplay';
+import { Steps } from '../components/Lobby/Steps';
+import { shareOrCopy } from '../ui/share';
 import { TokenPicker } from '../components/Lobby/TokenPicker';
 import { REJECT_TEXT, TokenId, isTokenId, sanitizeName } from '../multiplayer/lobby';
 import { loadPrefs, savePrefs } from '../persistence/IndexedDBManager';
 import { useStore } from '../state/connectionStore';
 
 type Stage = 'scan' | 'reply' | 'profile';
+const STEPS = ['Scan invite', 'Show reply', 'Your details'];
 
 export function JoinFlow() {
-  const { guestSession, guest, leave, game, selfId, go } = useStore();
+  const { guestSession, guest, leave, game, selfId, go, pendingOffer } = useStore();
+  const [autoPin, setAutoPin] = useState(false);
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage>('scan');
   const [answer, setAnswer] = useState<string | null>(null);
   const [hostName, setHostName] = useState('');
@@ -38,6 +43,10 @@ export function JoinFlow() {
         const r = await guestSession.acceptOffer(code);
         setAnswer(r.answerCode);
         setHostName(r.hostName);
+        if (r.pin) {
+          setPin(r.pin);
+          setAutoPin(true);
+        }
         setStage('reply');
       } catch (e) {
         setErr((e as Error).message);
@@ -46,6 +55,13 @@ export function JoinFlow() {
     },
     [guestSession],
   );
+
+  // Opened from an invite link: use the offer it carried.
+  useEffect(() => {
+    if (!pendingOffer || !guestSession || stage !== 'scan') return;
+    useStore.setState({ pendingOffer: null });
+    void onOffer(pendingOffer);
+  }, [pendingOffer, guestSession, stage, onOffer]);
 
   // Channel opened: move on to the profile form.
   useEffect(() => {
@@ -86,20 +102,35 @@ export function JoinFlow() {
         {guest && <ConnectionBadge status={guest.status} rttMs={guest.rttMs} />}
       </header>
 
-      {stage === 'scan' && (
+      {!claim && <Steps labels={STEPS} current={stage === 'scan' ? 0 : stage === 'reply' ? 1 : 2} />}
+
+      {stage === 'scan' && pendingOffer && <p className="text-center text-sm text-gold-light">Opening your invite...</p>}
+      {stage === 'scan' && !pendingOffer && (
         <section className="flex flex-col items-center gap-3" data-testid="join-scan">
-          <p className="text-center text-sm opacity-80">Scan the code shown on the host's phone.</p>
+          <p className="text-center text-sm opacity-80">Point your camera at the code on the host's phone. It scans by itself.</p>
           <CodeCollector key={scanKey} onCode={onOffer} />
         </section>
       )}
 
       {stage === 'reply' && answer && (
         <section className="card flex flex-col items-center gap-3" data-testid="join-reply">
-          <h3 className="font-bold">Show this to {hostName || 'the host'}</h3>
+          <h3 className="font-bold">Now show this to {hostName || 'the host'}</h3>
           <p className="text-center text-sm opacity-80">
-            Hold this code in front of the host's camera ("Step 2" on their screen). Keep it visible until it says Connected.
+            Hold this screen in front of the host's camera and keep it there until this page moves on by itself. Or send the reply to them.
           </p>
           <QrDisplay code={answer} />
+          <button
+            className="btn-ghost w-full py-2 text-sm"
+            data-testid="send-reply"
+            data-code={answer}
+            onClick={async () => {
+              const r = await shareOrCopy({ title: 'Mahabharata reply', text: `My Mahabharata reply code:\n${answer}` });
+              setShareMsg(r === 'copied' ? 'Reply copied. Paste it into your chat with the host.' : r === 'failed' ? 'Could not share. Use the QR code.' : null);
+            }}
+          >
+            Send the reply code to the host
+          </button>
+          {shareMsg && <p className="text-center text-xs text-gold-light">{shareMsg}</p>}
           <p className="text-sm text-gold-light">Waiting for the host to scan...</p>
           {slow && (
             <p className="text-center text-xs text-red-200">
@@ -157,9 +188,9 @@ export function JoinFlow() {
             <TokenPicker value={token} onChange={setToken} taken={taken} />
           </div>
           <label className="flex flex-col gap-1 text-sm">
-            Host's PIN
+            {autoPin ? "Host's PIN (filled in for you)" : "Host's PIN"}
             <input
-              className="rounded border border-gold/50 bg-navy-2 p-3 text-center text-2xl tracking-[0.5em] text-ivory"
+              className={`rounded border border-gold/50 bg-navy-2 text-center tracking-[0.5em] text-ivory ${autoPin ? 'p-2 text-lg opacity-70' : 'p-3 text-2xl'}`}
               inputMode="numeric"
               pattern="[0-9]*"
               maxLength={4}

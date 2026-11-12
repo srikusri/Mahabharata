@@ -55,7 +55,7 @@ async function readQr(page) {
 
 async function feed(page, parts) {
   const box = page.getByTestId('paste-box');
-  if (!(await box.isVisible())) await page.getByText('Paste code instead').click();
+  if (!(await box.isVisible())) await page.getByText('Type or paste code manually').click();
   for (const p of [...parts].reverse()) {
     await box.fill(p);
     await page.getByTestId('paste-use').click();

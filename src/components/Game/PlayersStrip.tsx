@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from 'react';
+import { cashDeltas } from '../../ui/hop';
 import { SPACES } from '../../engine/board';
 import type { PublicState } from '../../engine';
 import type { TokenId } from '../../multiplayer/lobby';
@@ -6,6 +8,18 @@ import { netWorth } from '../../engine/properties';
 import type { GameState } from '../../engine';
 
 export function PlayersStrip({ game, selfId, offline }: { game: PublicState; selfId: string; offline: Set<string> }) {
+  const prev = useRef<Record<string, number>>(Object.fromEntries(game.players.map((p) => [p.id, p.cash])));
+  const [pops, setPops] = useState<Record<string, { d: number; k: number }>>({});
+  useEffect(() => {
+    const next = Object.fromEntries(game.players.map((p) => [p.id, p.cash]));
+    const d = cashDeltas(prev.current, next);
+    prev.current = next;
+    const ids = Object.keys(d);
+    if (!ids.length) return;
+    setPops((o) => ({ ...o, ...Object.fromEntries(ids.map((id) => [id, { d: d[id], k: (o[id]?.k ?? 0) + 1 }])) }));
+    const t = setTimeout(() => setPops((o) => Object.fromEntries(Object.entries(o).filter(([id]) => !ids.includes(id)))), 1700);
+    return () => clearTimeout(t);
+  }, [game]);
   return (
     <section className="grid grid-cols-2 gap-2" data-testid="players">
       {game.players.map((p, i) => {
@@ -25,8 +39,13 @@ export function PlayersStrip({ game, selfId, offline }: { game: PublicState; sel
                 {offline.has(p.id) && !p.bankrupt ? ' · offline' : ''}
               </div>
             </div>
-            <div className="text-right text-sm font-bold text-gold-light" title={`Net worth ${netWorth(game as unknown as GameState, p.id)} S`}>
+            <div className="relative text-right text-sm font-bold text-gold-light" title={`Net worth ${netWorth(game as unknown as GameState, p.id)} S`}>
               {p.cash} S
+              {pops[p.id] && (
+                <span key={pops[p.id].k} data-testid="money-pop" className={`money-pop absolute -top-3 right-0 text-xs ${pops[p.id].d > 0 ? 'text-green-300' : 'text-red-300'}`}>
+                  {pops[p.id].d > 0 ? '+' : ''}{pops[p.id].d}
+                </span>
+              )}
             </div>
           </div>
         );

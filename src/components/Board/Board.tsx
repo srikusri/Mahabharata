@@ -51,7 +51,7 @@ const BREAKS: Record<string, string> = {
 };
 const label = (name: string) => BREAKS[name] ?? name;
 
-function Tile({ s, tokens, active, own }: { s: Space; tokens: BoardToken[]; active: boolean; own?: Ownership }) {
+function Tile({ s, tokens, active, own, onSelect }: { s: Space; tokens: BoardToken[]; active: boolean; own?: Ownership; onSelect?: (i: number) => void }) {
   const { row, col, side, corner } = gridPos(s.index);
   const dark = DARK.has(s.kind);
   const bg = KIND_BG[s.kind] ?? '#FBF7EC';
@@ -61,7 +61,10 @@ function Tile({ s, tokens, active, own }: { s: Space; tokens: BoardToken[]; acti
   return (
     <div
       data-space={s.index}
-      className={`relative flex overflow-hidden ${flex} ${active ? 'ring-[0.35cqw] ring-gold-light z-10' : ''}`}
+      role={onSelect ? 'button' : undefined}
+      aria-label={s.name}
+      onClick={onSelect ? () => onSelect(s.index) : undefined}
+      className={`${onSelect ? 'cursor-pointer ' : ''}relative flex overflow-hidden ${flex} ${active ? 'ring-[0.35cqw] ring-gold-light z-10' : ''}`}
       style={{
         gridRow: row + 1,
         gridColumn: col + 1,
@@ -120,7 +123,7 @@ function Tile({ s, tokens, active, own }: { s: Space; tokens: BoardToken[]; acti
             <span
               key={t.id}
               title={t.name}
-              className="flex items-center justify-center rounded-full font-bold text-navy"
+              className="token-pop flex items-center justify-center rounded-full font-bold text-navy"
               style={{
                 width: '1.9cqw',
                 height: '1.9cqw',
@@ -143,11 +146,13 @@ export function Board({
   activeIndex,
   center,
   ownership = {},
+  onSelect,
 }: {
   tokens?: BoardToken[];
   activeIndex?: number;
   center?: ReactNode;
   ownership?: Record<number, Ownership>;
+  onSelect?: (i: number) => void;
 }) {
   return (
     <PanZoom>
@@ -161,7 +166,7 @@ export function Board({
         }}
       >
         {SPACES.map((s) => (
-          <Tile key={s.index} s={s} own={ownership[s.index]} active={activeIndex === s.index} tokens={tokens.filter((t) => t.position === s.index)} />
+          <Tile key={s.index} s={s} onSelect={onSelect} own={ownership[s.index]} active={activeIndex === s.index} tokens={tokens.filter((t) => t.position === s.index)} />
         ))}
         <div
           className="flex flex-col items-center justify-center text-center"

@@ -15,3 +15,18 @@ body {
 .btn-gold { @apply btn bg-gold text-navy; }
 .btn-ghost { @apply btn border border-gold/60 text-gold-light; }
 .card { @apply rounded-xl border border-gold/40 bg-navy-2/60 p-4; }
+
+/* Phase 5 motion */
+@keyframes pop { 0% { transform: scale(.4); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
+.token-pop { animation: pop .22s ease-out; }
+@keyframes floatUp { 0% { opacity: 0; transform: translateY(6px); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(-22px); } }
+.money-pop { animation: floatUp 1.6s ease-out forwards; pointer-events: none; }
+@keyframes flipIn { from { transform: rotateY(90deg); opacity: 0; } to { transform: rotateY(0); opacity: 1; } }
+.flip-in { animation: flipIn .35s ease-out; }
+@keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: none; opacity: 1; } }
+.slide-down { animation: slideDown .3s ease-out; }
+:focus-visible { outline: 2px solid #E9D091; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .token-pop, .money-pop, .flip-in, .slide-down { animation: none !important; }
+  * { scroll-behavior: auto !important; }
+}

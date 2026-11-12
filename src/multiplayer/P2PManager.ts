@@ -40,6 +40,7 @@ export class HostSession {
         roomId: this.manager.roomId,
         hostId: this.manager.hostId,
         hostName: this.manager.hostName,
+        pin: this.manager.pin,
         slot,
         sdp,
       });
@@ -98,7 +99,7 @@ export class GuestSession {
 
   constructor(private readonly opts: GuestSessionOptions = {}) {}
 
-  async acceptOffer(offerCode: string): Promise<{ answerCode: string; hostName: string; roomId: string }> {
+  async acceptOffer(offerCode: string): Promise<{ answerCode: string; hostName: string; roomId: string; pin?: string }> {
     const sig = await decodeSignal(offerCode);
     if (sig.role !== 'offer' || !sig.hostId) throw new Error('That is a reply code, not an invite. Scan the code shown on the host phone.');
 
@@ -126,7 +127,7 @@ export class GuestSession {
       sdp,
     });
     this.opts.onState?.(manager.getState());
-    return { answerCode, hostName: this.hostName, roomId: sig.roomId };
+    return { answerCode, hostName: this.hostName, roomId: sig.roomId, pin: typeof sig.pin === 'string' && /^\d{4}$/.test(sig.pin) ? sig.pin : undefined };
   }
 
   dispose(): void {

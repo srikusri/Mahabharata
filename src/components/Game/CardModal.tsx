@@ -7,7 +7,7 @@ export function CardModal({ event, onClose }: { event: GameEvent; onClose: () =>
   const daiva = deck === 'daiva';
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6" role="dialog" aria-modal="true" data-testid="card-modal" onClick={onClose}>
-      <div className="w-full max-w-xs rounded-2xl border-4 p-5 text-center shadow-2xl" style={{ background: daiva ? '#FCEFD2' : '#E4EEFA', borderColor: daiva ? '#D9731B' : '#1F5FBF', color: '#2B2114' }}>
+      <div className="flip-in w-full max-w-xs rounded-2xl border-4 p-5 text-center shadow-2xl" style={{ background: daiva ? '#FCEFD2' : '#E4EEFA', borderColor: daiva ? '#D9731B' : '#1F5FBF', color: '#2B2114' }}>
         <div className="text-xs font-bold tracking-widest" style={{ color: daiva ? '#D9731B' : '#1F5FBF' }}>
           {isPeek ? "SANJAYA'S VISION" : daiva ? 'DAIVA CARD' : 'DHARMA SANKAT CARD'}
         </div>

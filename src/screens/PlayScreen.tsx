@@ -15,18 +15,36 @@ import { PlayerDashboard } from '../components/Player/PlayerDashboard';
 import { TOKEN_STYLE } from '../components/Player/tokens';
 import type { TokenId } from '../multiplayer/lobby';
 import { useStore } from '../state/connectionStore';
+import { DeedModal } from '../components/Game/DeedModal';
+import { Standings } from '../components/Game/Standings';
+import { TurnToast } from '../components/Game/TurnToast';
+import { play, sfxFor, unlockAudio } from '../ui/sound';
+import { useUi } from '../ui/prefs';
+import { useHopPositions } from '../ui/useHopPositions';
+import { useWakeLock } from '../ui/useWakeLock';
 
 export function PlayScreen() {
   const { lobby, selfId, guest, role, leave, game, events, gameError, clearError, dispatch, reconnect, takeOver, skipOffline, pin } = useStore();
   const [modal, setModal] = useState<GameEvent | null>(null);
   const [rollKey, setRollKey] = useState(0);
   const lastVersion = useRef(-1);
+  const [deed, setDeed] = useState<number | null>(null);
+  const { muted, toggleMute } = useUi();
+  useWakeLock(!!game && game.turn.phase !== 'over');
+  useEffect(() => {
+    window.addEventListener('pointerdown', unlockAudio, { once: true });
+    return () => window.removeEventListener('pointerdown', unlockAudio);
+  }, []);
+  const targets = useMemo(() => Object.fromEntries((game?.players ?? []).filter((p) => !p.bankrupt).map((p) => [p.id, p.position])), [game]);
+  const hopped = useHopPositions(targets, () => play('step'));
 
   // React to the events of each new state: tumble the dice, show drawn cards.
   useEffect(() => {
     if (!game || game.version === lastVersion.current) return;
     lastVersion.current = game.version;
     if (events.some((e) => e.type === 'dice')) setRollKey((k) => k + 1);
+    const sounds = new Set(events.map((e) => sfxFor(e.type)).filter((x): x is NonNullable<typeof x> => !!x));
+    sounds.forEach((x) => play(x));
     const card = events.find((e) => e.type === 'card' && e.data?.title) ?? events.find((e) => e.type === 'peek');
     if (card) setModal(card);
   }, [game, events]);
@@ -59,18 +77,23 @@ export function PlayScreen() {
   const lobbyMe = lobby.players.find((p) => p.id === selfId);
   const current = game.players[game.turn.index];
   const offline = new Set(lobby.players.filter((p) => !p.connected).map((p) => p.id));
-  const tokens = game.players.filter((p) => !p.bankrupt).map((p) => ({ id: p.id, tokenId: p.tokenId as TokenId, position: p.position, name: p.name }));
+  const tokens = game.players.filter((p) => !p.bankrupt).map((p) => ({ id: p.id, tokenId: p.tokenId as TokenId, position: hopped[p.id] ?? p.position, name: p.name }));
   const ownedNames = Object.keys(game.props).map(Number).filter((i) => game.props[i].owner === selfId).map((i) => SPACES[i].name);
   const winner = game.players.find((p) => p.id === game.winner);
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-3 p-3">
+    <main className="mx-auto max-w-2xl p-3 lg:grid lg:max-w-6xl lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-4">
+      <TurnToast myTurn={current.id === selfId} phase={game.turn.phase} />
+      <div className="flex flex-col gap-3 lg:sticky lg:top-3">
       <header className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-gold-light" data-testid="turn-title">
           {game.turn.phase === 'over' ? 'Game over' : current.id === selfId ? 'Your turn' : `${current.name}'s turn`}
         </h2>
         <div className="flex items-center gap-3 text-xs">
           <span className="opacity-70">Round {game.turn.round}</span>
+          <button className="rounded border border-gold/40 px-2 py-0.5" onClick={toggleMute} aria-pressed={muted} data-testid="mute" aria-label={muted ? 'Unmute sound' : 'Mute sound'}>
+            {muted ? 'Sound off' : 'Sound on'}
+          </button>
           <ConnectionBadge status={role === 'host' ? 'host' : (guest?.status ?? 'closed')} rttMs={guest?.rttMs} />
         </div>
       </header>
@@ -79,9 +102,11 @@ export function PlayScreen() {
         tokens={tokens}
         activeIndex={current.position}
         ownership={ownership}
+        onSelect={setDeed}
         center={<Dice dice={game.turn.dice} rollKey={rollKey} />}
       />
-
+      </div>
+      <div className="mt-3 flex flex-col gap-3 lg:mt-0">
       {gameError && (
         <div role="alert" data-testid="game-error" className="rounded-lg bg-red-900/80 p-2 text-center text-sm" onClick={clearError}>
           {gameError}
@@ -115,6 +140,9 @@ export function PlayScreen() {
         Leave game
       </button>
 
+      </div>
+
+      {deed !== null && <DeedModal index={deed} game={game} onClose={() => setDeed(null)} />}
       {modal && <CardModal event={modal} onClose={() => setModal(null)} />}
       {game.turn.phase === 'over' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6" data-testid="game-over">
@@ -122,6 +150,7 @@ export function PlayScreen() {
             <div className="text-xs tracking-widest text-gold-light">CHAKRAVARTIN</div>
             <h2 className="my-2 text-3xl font-bold">{winner?.name ?? 'Nobody'}</h2>
             <p className="text-sm opacity-80">{game.winReason === 'timed' ? 'wins on net worth' : 'is the last ruler standing'}</p>
+            <Standings game={game} />
             <button className="btn-gold mt-4 w-full" onClick={leave}>Return home</button>
           </div>
         </div>

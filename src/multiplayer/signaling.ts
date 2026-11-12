@@ -20,6 +20,8 @@ export interface SignalPayload {
   /** Offer only. */
   hostId?: string;
   hostName?: string;
+  /** Offer only: the joining PIN, so the guest does not have to type it. Whoever holds the offer still needs the host to accept their reply. */
+  pin?: string;
   /** Answer only: the id the guest will use as senderId. */
   guestId?: string;
 }
@@ -119,6 +121,23 @@ export async function decodeSignal(code: string): Promise<SignalPayload> {
   return s as SignalPayload;
 }
 
+/** Finds a pairing code inside arbitrary text (bare code, `...#join=<code>` link, or a pasted chat message). */
+export function extractCode(text: string): string | null {
+  const m = /MG1\.[zr]\.[A-Za-z0-9_-]+/.exec(text);
+  return m ? m[0] : null;
+}
+
+/** Link a host can send instead of showing a QR. The code sits in the URL fragment, which is never sent to any server. */
+export function inviteLink(code: string, base: string): string {
+  return `${base.split('#')[0]}#join=${code}`;
+}
+
+/** The offer code carried by a location.hash such as `#join=MG1...`, if any. */
+export function parseInviteHash(hash: string): string | null {
+  const m = /^#join=(MG1\.[zr]\.[A-Za-z0-9_-]+)$/.exec(hash.trim());
+  return m ? m[1] : null;
+}
+
 function tagOf(code: string): string {
   let h = 5381;
   for (let i = 0; i < code.length; i++) h = ((h * 33) ^ code.charCodeAt(i)) >>> 0;
@@ -162,9 +181,11 @@ export class PartAssembler {
 
   add(text: string): AssemblerProgress {
     const t = text.trim();
-    if (t.startsWith(`${PREFIX}.`)) {
+    // Accept the bare code, an invite link, or a chat message that contains one.
+    const full = t.startsWith(`${PART_PREFIX}.`) ? null : extractCode(t);
+    if (full) {
       this.reset();
-      return { complete: true, have: 1, total: 1, code: t };
+      return { complete: true, have: 1, total: 1, code: full };
     }
     const m = /^MGP\.([a-z0-9]{5})\.(\d+)\.(\d+)\.([A-Za-z0-9_.-]+)$/.exec(t);
     if (!m) return { complete: false, have: this.parts.size, total: this.total, ignored: true };

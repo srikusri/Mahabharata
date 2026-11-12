@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { parseInviteHash } from './multiplayer/signaling';
 import { Board } from './components/Board/Board';
 import { GuestLobby } from './screens/GuestLobby';
 import { Home } from './screens/Home';
@@ -24,6 +26,13 @@ function BoardPreview() {
 
 export default function App() {
   const screen = useStore((s) => s.screen);
+  // Opened from an invite link: jump straight into joining, then clear the code from the address bar.
+  useEffect(() => {
+    const code = parseInviteHash(location.hash);
+    if (!code) return;
+    history.replaceState(null, '', location.pathname + location.search);
+    useStore.getState().openInvite(code);
+  }, []);
   if (typeof location !== 'undefined' && location.hash === '#board-preview') return <BoardPreview />;
   switch (screen) {
     case 'host-setup':

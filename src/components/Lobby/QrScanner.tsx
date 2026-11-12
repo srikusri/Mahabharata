@@ -43,8 +43,8 @@ export function QrScanner({ onText }: { onText: (text: string) => void }) {
       if (!navigator.mediaDevices?.getUserMedia) {
         setErr(
           window.isSecureContext
-            ? 'This browser cannot use the camera. Use "Paste code" instead.'
-            : 'The camera only works on secure (https) pages. Open the https link, or use "Paste code".',
+            ? 'This browser cannot use the camera. Ask the host to send you the invite link instead.'
+            : 'The camera only works on secure (https) pages. Open the https link, or ask the host to send you the invite link.',
         );
         setStarting(false);
         return;
@@ -68,8 +68,8 @@ export function QrScanner({ onText }: { onText: (text: string) => void }) {
         const name = (e as DOMException).name;
         setErr(
           name === 'NotAllowedError'
-            ? 'Camera permission was denied. Allow camera access for this site in your browser settings, or use "Paste code".'
-            : 'Could not start the camera. Use "Paste code" instead.',
+            ? 'Camera permission was denied. Allow camera access for this site in your browser settings, or ask the host to send you the invite link.'
+            : 'Could not start the camera. Ask the host to send you the invite link instead.',
         );
         setStarting(false);
       }
