@@ -56,6 +56,10 @@ need for the camera and for installing the app to the home screen.
 - Step indicators on both phones, clearer wording, and a "phone connected" note on the host.
 - `npm run e2e:link` covers the link path.
 
+## How-to-play carousel
+
+The home screen has a swipeable "How it works" guide (8 steps: host, invite, join, lobby, play, deeds). Screenshots are real captures of the app in `public/guide/*.webp` (about 160 KB total, cached offline). After a UI change, regenerate them with `npm run build && npx vite preview --port 4173 &` then `npm run guide:shots`, and convert `e2e-out/guide-raw/*.png` to 360 px wide WebP. Slide text lives in `src/components/Guide/HowItWorks.tsx`.
+
 ## How pairing works
 
 There is no signalling server, so the WebRTC handshake travels through two QR codes.

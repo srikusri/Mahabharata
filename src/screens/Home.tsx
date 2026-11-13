@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { HowItWorks } from '../components/Guide/HowItWorks';
 import { useStore } from '../state/connectionStore';
 
 export function Home() {
@@ -37,6 +38,7 @@ export function Home() {
           You can still pair with "Paste code".
         </p>
       )}
+      <HowItWorks />
       <p className="text-xs opacity-70">
         Host: tap Create New Game, then Add a player. Players: tap Join Game and scan the host's code, or just open the invite link the host sends you.
       </p>

@@ -77,6 +77,19 @@ const mk = async (label) => {
 try {
   const host = await mk('host');
   await host.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  // How-it-works carousel on the home screen: every slide reachable, every screenshot loads.
+  const slides = host.getByTestId('guide-slide');
+  const n = await slides.count();
+  expect(n >= 6, 'carousel has slides');
+  for (let k = 1; k < n; k++) await host.getByTestId('guide-next').click();
+  await host.waitForTimeout(500);
+  expect(await host.getByTestId('guide-next').isDisabled(), 'next is disabled on the last slide');
+  const broken = await host.evaluate(() => [...document.querySelectorAll('[data-testid=guide-slide] img')].filter((i) => !i.complete || i.naturalWidth === 0).map((i) => i.src));
+  expect(broken.length === 0, 'guide screenshots failed to load: ' + broken.join(','));
+  await host.getByTestId('guide-prev').click();
+  await host.waitForTimeout(500);
+  await host.getByTestId('how-it-works').screenshot({ path: `${OUT}23-guide.png` });
+  log('carousel ok,', n, 'slides');
   await host.getByTestId('create-game').click();
   await host.getByTestId('host-name').fill('Host');
   await host.locator('[data-token=crown]').click();
