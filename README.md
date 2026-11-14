@@ -56,6 +56,15 @@ need for the camera and for installing the app to the home screen.
 - Step indicators on both phones, clearer wording, and a "phone connected" note on the host.
 - `npm run e2e:link` covers the link path.
 
+## Play UX fixes (Phase 5c)
+
+- **Sound**: audio now unlocks on the first completed tap (pointerup / touchend / click) and keeps trying until the browser reports it is running, instead of one early pointerdown that touch browsers ignore. iPhones also need the ringer switch off silent for Web Audio unless iOS 17+ honours the "playback" session we request.
+- **Card pop-ups** say whose card it is ("Arjuna drew this card"), list what it did (who paid whom, moves, salary), and close by themselves after 6 s for onlookers. The player who drew it taps OK.
+- **Last action** sits directly under the board and dice: the latest four events (rolls, moves, rent, purchases, cards).
+- **Auto end turn**: once nothing is left to decide, End turn counts down 15 s and presses itself. Any new game state restarts the count, "Wait, I am not done" holds it, and the header toggle turns it off (remembered per phone).
+- **End by agreement**: after 100 completed rounds any player can propose ending; when every remaining player agrees, the greatest net worth (cash + kingdoms + buildings) wins. One "Keep playing" cancels. Change the limit with `END_VOTE_AFTER_ROUNDS` in `src/engine/data.ts`. A player who is offline cannot agree; the host can use "skip offline player" first.
+- Tests: `npm run e2e:ux` (sound, last action in view, auto end, hold, toggle) plus engine and component tests.
+
 ## How-to-play carousel
 
 The home screen has a swipeable "How it works" guide (8 steps: host, invite, join, lobby, play, deeds). Screenshots are real captures of the app in `public/guide/*.webp` (about 160 KB total, cached offline). After a UI change, regenerate them with `npm run build && npx vite preview --port 4173 &` then `npm run guide:shots`, and convert `e2e-out/guide-raw/*.png` to 360 px wide WebP. Slide text lives in `src/components/Guide/HowItWorks.tsx`.

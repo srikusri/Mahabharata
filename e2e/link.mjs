@@ -66,6 +66,7 @@ const browser = await chromium.launch({ args: ['--disable-features=WebRtcHideLoc
 const pages = {};
 const mk = async (label) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.addInitScript(() => localStorage.setItem('mg:ui', JSON.stringify({ autoEnd: false })));
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(`${label} pageerror: ${e.message}`));
   page.on('dialog', (d) => d.accept());

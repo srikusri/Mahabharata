@@ -47,6 +47,7 @@ export function createGame(players: NewPlayer[], seed: number, settings: Partial
     eventSeq: 0,
     winner: null,
     winReason: null,
+    endVote: null,
   };
   s.decks.daiva.draw = shuffle(s, DECK_IDS.daiva);
   s.decks.sankat.draw = shuffle(s, DECK_IDS.sankat);
@@ -111,15 +112,19 @@ function checkWinner(c: Ctx): boolean {
   return c.s.turn.phase === 'over';
 }
 
-function finishTimed(c: Ctx) {
+function finishByWorth(c: Ctx, reason: 'timed' | 'agreed') {
   const ranked = active(c)
     .map((p) => ({ p, w: netWorth(c.s, p.id) }))
     .sort((a, b) => b.w - a.w);
   c.s.winner = ranked[0].p.id;
-  c.s.winReason = 'timed';
+  c.s.winReason = reason;
   c.s.turn.phase = 'over';
-  emit(c, 'win', `Time! ${ranked[0].p.name} has the greatest net worth (${ranked[0].w} S) and is the Chakravartin.`, { playerId: ranked[0].p.id });
+  c.s.pendingBuy = null;
+  c.s.endVote = null;
+  const lead = reason === 'agreed' ? 'All players agreed to end the game.' : 'Time!';
+  emit(c, 'win', `${lead} ${ranked[0].p.name} has the greatest net worth (${ranked[0].w} S) and is the Chakravartin.`, { playerId: ranked[0].p.id });
 }
+const finishTimed = (c: Ctx) => finishByWorth(c, 'timed');
 
 function advanceTurn(c: Ctx) {
   const { s } = c;
@@ -455,7 +460,25 @@ export function applyAction(state: GameState, playerId: PlayerId, action: Action
     case 'DECLARE_BANKRUPTCY':
       bankrupt(c, p.id);
       break;
+    case 'PROPOSE_END':
+      s.endVote = { by: p.id, agreed: [p.id] };
+      emit(c, 'endvote', `${p.name} proposes to end the game now and count net worth. Every player must agree.`, { playerId: p.id });
+      break;
+    case 'AGREE_END':
+      s.endVote!.agreed.push(p.id);
+      emit(c, 'endvote', `${p.name} agrees to end the game`, { playerId: p.id });
+      break;
+    case 'REJECT_END':
+      emit(c, 'endvote', s.endVote!.by === p.id ? `${p.name} withdraws the proposal to end the game` : `${p.name} declines to end the game; play continues`, { playerId: p.id });
+      s.endVote = null;
+      break;
   }
+  // Unanimous (counting only players still in the game, so a bankruptcy can complete a vote).
+  if (s.endVote && s.turn.phase !== 'over') {
+    const votes = s.endVote;
+    if (active(c).every((pl) => votes.agreed.includes(pl.id))) finishByWorth(c, 'agreed');
+  }
+  if (s.turn.phase === 'over') s.endVote = null;
   s.version++;
   return { ok: true, state: s, events: c.ev };
 }

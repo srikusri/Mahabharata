@@ -69,6 +69,7 @@ const RAW = `${OUT}guide-raw/`;
 fs.mkdirSync(RAW, { recursive: true });
 const mk = async (label) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 780 }, deviceScaleFactor: 2 });
+  await ctx.addInitScript(() => localStorage.setItem('mg:ui', JSON.stringify({ autoEnd: false })));
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(`${label}: ${e.message}`));
   pages[label] = page;

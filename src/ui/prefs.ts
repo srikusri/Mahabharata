@@ -4,15 +4,19 @@ const KEY = 'mg:ui';
 interface UiPrefs {
   muted: boolean;
   haptics: boolean;
+  /** End the turn by itself after a pause once there is nothing left to decide. */
+  autoEnd: boolean;
+  autoEndSec: number;
 }
+const DEFAULTS: UiPrefs = { muted: false, haptics: true, autoEnd: true, autoEndSec: 15 };
 function load(): UiPrefs {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { muted: false, haptics: true, ...JSON.parse(raw) };
+    if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
   } catch {
     /* ignore */
   }
-  return { muted: false, haptics: true };
+  return { ...DEFAULTS };
 }
 function save(p: UiPrefs) {
   try {
@@ -22,15 +26,21 @@ function save(p: UiPrefs) {
   }
 }
 
-export const useUi = create<UiPrefs & { toggleMute: () => void; toggleHaptics: () => void }>((set, get) => ({
+const persist = (g: UiPrefs) => save({ muted: g.muted, haptics: g.haptics, autoEnd: g.autoEnd, autoEndSec: g.autoEndSec });
+
+export const useUi = create<UiPrefs & { toggleMute: () => void; toggleHaptics: () => void; toggleAutoEnd: () => void }>((set, get) => ({
   ...load(),
   toggleMute: () => {
     set({ muted: !get().muted });
-    save({ muted: get().muted, haptics: get().haptics });
+    persist(get());
   },
   toggleHaptics: () => {
     set({ haptics: !get().haptics });
-    save({ muted: get().muted, haptics: get().haptics });
+    persist(get());
+  },
+  toggleAutoEnd: () => {
+    set({ autoEnd: !get().autoEnd });
+    persist(get());
   },
 }));
 

@@ -46,6 +46,9 @@ export const PARK_SPACE = 20;
 export const GO_SPACE = 0;
 export const BOARD_SIZE = 40;
 
+/** After this many completed rounds, players may end the game by unanimous agreement; net worth decides. */
+export const END_VOTE_AFTER_ROUNDS = 100;
+
 export const DEFAULT_SETTINGS = { startingCash: 1500, salary: 200, exileFee: 50, maxRounds: null as number | null };
 
 for (const s of SPACES) {

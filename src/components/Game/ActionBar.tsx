@@ -1,3 +1,4 @@
+import { EndTurn } from './EndTurn';
 import { SPACES } from '../../engine/board';
 import type { Action, PublicState } from '../../engine';
 
@@ -74,9 +75,7 @@ export function ActionBar({ game, selfId, send }: { game: PublicState; selfId: s
       );
     case 'action':
       return (
-        <button className="btn-gold text-lg" data-testid="end-turn" onClick={() => send({ type: 'END_TURN' })}>
-          End turn
-        </button>
+        <EndTurn version={game.version} onEnd={() => send({ type: 'END_TURN' })} />
       );
   }
 }

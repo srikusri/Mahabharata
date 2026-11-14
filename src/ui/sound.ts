@@ -17,10 +17,53 @@ function ac(): AudioContext | null {
   return ctx;
 }
 
-/** iOS only starts audio after a user gesture; call from the first tap. */
+function publish(c: AudioContext) {
+  try {
+    document.documentElement.dataset.audio = c.state; // handy for tests and debugging
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Browsers only allow audio after a user gesture, and touch screens count a *completed* tap (pointerup / touchend /
+ * click), not pointerdown. So this is called from every such event until the context is actually running.
+ * It also plays one silent sample (iOS needs a sound started inside the gesture) and asks iOS 17+ to use the
+ * "playback" audio session so the hardware silent switch does not mute the game.
+ */
 export function unlockAudio() {
+  try {
+    (navigator as unknown as { audioSession?: { type: string } }).audioSession && ((navigator as unknown as { audioSession: { type: string } }).audioSession.type = 'playback');
+  } catch {
+    /* unsupported */
+  }
   const c = ac();
-  if (c && c.state === 'suspended') void c.resume();
+  if (!c) return;
+  c.onstatechange = () => publish(c);
+  const kick = () => {
+    try {
+      const b = c.createBuffer(1, 1, 22050);
+      const src = c.createBufferSource();
+      src.buffer = b;
+      src.connect(c.destination);
+      src.start(0);
+    } catch {
+      /* ignore */
+    }
+    publish(c);
+  };
+  if (c.state === 'running') return kick();
+  void c.resume().then(kick, () => undefined);
+}
+
+/** Wire the unlock to every gesture type that counts, once for the whole app. Removes itself when audio is running. */
+export function installAudioUnlock() {
+  const events = ['pointerup', 'touchend', 'click', 'keydown'] as const;
+  const handler = () => {
+    unlockAudio();
+    if (ctx?.state === 'running') events.forEach((e) => window.removeEventListener(e, handler, true));
+  };
+  events.forEach((e) => window.addEventListener(e, handler, true));
 }
 
 function tone(c: AudioContext, t: number, freq: number, dur: number, type: OscillatorType = 'sine', vol = 0.15, slideTo?: number) {
@@ -40,7 +83,12 @@ function tone(c: AudioContext, t: number, freq: number, dur: number, type: Oscil
 export function play(s: Sfx) {
   if (useUi.getState().muted) return;
   const c = ac();
-  if (!c || c.state !== 'running') return;
+  if (!c) return;
+  if (c.state !== 'running') {
+    // Not unlocked yet (or the OS suspended it): try to resume, and play once it is running.
+    void c.resume().then(() => c.state === 'running' && play(s), () => undefined);
+    return;
+  }
   const t = c.currentTime;
   switch (s) {
     case 'dice':

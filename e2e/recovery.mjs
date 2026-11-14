@@ -66,6 +66,7 @@ const browser = await chromium.launch({ args: ['--disable-features=WebRtcHideLoc
 const pages = {};
 const mk = async (label) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.addInitScript(() => localStorage.setItem('mg:ui', JSON.stringify({ autoEnd: false })));
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(`${label} pageerror: ${e.message}`));
   page.on('dialog', (d) => d.accept());
@@ -88,7 +89,7 @@ async function lobbyJoin(host, guest, name, token, pin) {
 
 async function finishMove(page) {
   for (let i = 0; i < 14; i++) {
-    if (await page.getByTestId('card-modal').isVisible()) await page.getByTestId('card-modal').getByText('OK').click();
+    if (await page.getByTestId('card-modal').isVisible()) await page.getByTestId('card-modal').locator('button').click({ timeout: 2000 }).catch(() => {});
     else if (await page.getByTestId('end-turn').isVisible()) {
       await page.waitForTimeout(900); // a card modal can appear just after the buttons
       if (!(await page.getByTestId('card-modal').isVisible())) return;
@@ -100,14 +101,14 @@ async function finishMove(page) {
   }
 }
 async function dismissModal(page) {
-  if (await page.getByTestId('card-modal').isVisible().catch(() => false)) await page.getByTestId('card-modal').getByText('OK').click();
+  if (await page.getByTestId('card-modal').isVisible().catch(() => false)) await page.getByTestId('card-modal').locator('button').click({ timeout: 2000 }).catch(() => {});
 }
 async function takeTurn(page) {
   // A small state machine: roll / decline / close cards until End turn is available (doubles roll again).
   await page.getByTestId('roll').waitFor({ timeout: 10000 });
   for (let i = 0; i < 40; i++) {
     const vis = (id) => page.getByTestId(id).isVisible().catch(() => false);
-    if (await vis('card-modal')) await page.getByTestId('card-modal').getByText('OK').click({ timeout: 2000 }).catch(() => {});
+    if (await vis('card-modal')) await page.getByTestId('card-modal').locator('button').click({ timeout: 2000 }).catch(() => {});
     else if (await vis('roll')) await page.getByTestId('roll').click({ timeout: 2000 }).catch(() => {});
     else if (await vis('decline')) await page.getByTestId('decline').click({ timeout: 2000 }).catch(() => {});
     else if (await vis('end-turn')) {

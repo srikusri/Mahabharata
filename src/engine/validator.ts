@@ -1,11 +1,11 @@
 /** RuleValidator: decides whether a request is legal *right now*. The host runs this on every guest action. */
 import { SPACES } from './board';
-import { BOARD_SIZE } from './data';
+import { BOARD_SIZE, END_VOTE_AFTER_ROUNDS } from './data';
 import { whyNotBuild, whyNotMortgage, whyNotSell, whyNotUnmortgage } from './properties';
 import type { Action, GameState, PlayerId } from './types';
 
 const SPACE_ACTIONS = ['BUILD', 'SELL_BUILDING', 'MORTGAGE', 'UNMORTGAGE'] as const;
-const PLAIN_ACTIONS = ['ROLL', 'BUY', 'DECLINE', 'END_TURN', 'PAY_EXILE', 'USE_EXILE_CARD', 'DECLARE_BANKRUPTCY'] as const;
+const PLAIN_ACTIONS = ['ROLL', 'BUY', 'DECLINE', 'END_TURN', 'PAY_EXILE', 'USE_EXILE_CARD', 'DECLARE_BANKRUPTCY', 'PROPOSE_END', 'AGREE_END', 'REJECT_END'] as const;
 
 /** Untrusted payload -> a well-formed Action, or null. Extra fields are dropped. */
 export function parseAction(payload: unknown): Action | null {
@@ -52,6 +52,16 @@ export function validate(s: GameState, pid: PlayerId, a: Action): string | null 
       return me.held.includes('daiva:krishna') ? null : "You do not hold Krishna's Counsel";
     case 'PEEK':
       return isCurrent && phase === 'peek' ? null : 'Nothing to peek at';
+    case 'PROPOSE_END': {
+      const done = s.turn.round - 1;
+      if (done < END_VOTE_AFTER_ROUNDS) return `The game can be ended by agreement after ${END_VOTE_AFTER_ROUNDS} rounds (${done} played)`;
+      return s.endVote ? 'A proposal to end the game is already open' : null;
+    }
+    case 'AGREE_END':
+      if (!s.endVote) return 'Nobody has proposed ending the game';
+      return s.endVote.agreed.includes(pid) ? 'You already agreed' : null;
+    case 'REJECT_END':
+      return s.endVote ? null : 'Nobody has proposed ending the game';
     case 'DECLARE_BANKRUPTCY':
       return phase === 'debt' && debtor === pid ? null : 'You are not in debt';
     case 'BUILD':

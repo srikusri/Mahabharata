@@ -72,6 +72,7 @@ const browser = await chromium.launch({
 });
 const mk = async (label) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.addInitScript(() => localStorage.setItem('mg:ui', JSON.stringify({ autoEnd: false })));
   const page = await ctx.newPage();
   watch(page, label);
   await page.goto(URL);
@@ -157,7 +158,7 @@ try {
   async function finishMove(page) {
     // resolve whatever the game is waiting for until the end-turn button appears
     for (let i = 0; i < 12; i++) {
-      if (await page.getByTestId('card-modal').isVisible()) await page.getByTestId('card-modal').getByText('OK').click();
+      if (await page.getByTestId('card-modal').isVisible()) await page.getByTestId('card-modal').locator('button').click({ timeout: 2000 }).catch(() => {});
       else if (await page.getByTestId('end-turn').isVisible()) return;
       else if (await page.getByTestId('decline').isVisible()) await page.getByTestId('decline').click();
       else if (await page.getByTestId('roll').isVisible()) await page.getByTestId('roll').click(); // doubles

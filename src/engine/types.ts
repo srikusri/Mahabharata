@@ -90,7 +90,9 @@ export interface GameState {
   log: GameEvent[];
   eventSeq: number;
   winner: PlayerId | null;
-  winReason: 'last-standing' | 'timed' | null;
+  winReason: 'last-standing' | 'timed' | 'agreed' | null;
+  /** Open proposal to end the game early by net worth; every remaining player must agree. Absent in older saves. */
+  endVote?: { by: PlayerId; agreed: PlayerId[] } | null;
 }
 
 export type Action =
@@ -105,6 +107,9 @@ export type Action =
   | { type: 'MORTGAGE'; space: number }
   | { type: 'UNMORTGAGE'; space: number }
   | { type: 'PEEK'; deck: DeckId }
-  | { type: 'DECLARE_BANKRUPTCY' };
+  | { type: 'DECLARE_BANKRUPTCY' }
+  | { type: 'PROPOSE_END' }
+  | { type: 'AGREE_END' }
+  | { type: 'REJECT_END' };
 
 export type ActionResult = { ok: true; state: GameState; events: GameEvent[] } | { ok: false; error: string };
