@@ -7,8 +7,10 @@ interface UiPrefs {
   /** End the turn by itself after a pause once there is nothing left to decide. */
   autoEnd: boolean;
   autoEndSec: number;
+  /** Show a short learning fact when someone lands on or buys a space. */
+  gyan: boolean;
 }
-const DEFAULTS: UiPrefs = { muted: false, haptics: true, autoEnd: true, autoEndSec: 15 };
+const DEFAULTS: UiPrefs = { muted: false, haptics: true, autoEnd: true, autoEndSec: 15, gyan: true };
 function load(): UiPrefs {
   try {
     const raw = localStorage.getItem(KEY);
@@ -26,9 +28,9 @@ function save(p: UiPrefs) {
   }
 }
 
-const persist = (g: UiPrefs) => save({ muted: g.muted, haptics: g.haptics, autoEnd: g.autoEnd, autoEndSec: g.autoEndSec });
+const persist = (g: UiPrefs) => save({ muted: g.muted, haptics: g.haptics, autoEnd: g.autoEnd, autoEndSec: g.autoEndSec, gyan: g.gyan });
 
-export const useUi = create<UiPrefs & { toggleMute: () => void; toggleHaptics: () => void; toggleAutoEnd: () => void }>((set, get) => ({
+export const useUi = create<UiPrefs & { toggleMute: () => void; toggleHaptics: () => void; toggleAutoEnd: () => void; toggleGyan: () => void }>((set, get) => ({
   ...load(),
   toggleMute: () => {
     set({ muted: !get().muted });
@@ -36,6 +38,10 @@ export const useUi = create<UiPrefs & { toggleMute: () => void; toggleHaptics: (
   },
   toggleHaptics: () => {
     set({ haptics: !get().haptics });
+    persist(get());
+  },
+  toggleGyan: () => {
+    set({ gyan: !get().gyan });
     persist(get());
   },
   toggleAutoEnd: () => {

@@ -88,7 +88,8 @@ try {
   const broken = await host.evaluate(() => [...document.querySelectorAll('[data-testid=guide-slide] img')].filter((i) => !i.complete || i.naturalWidth === 0).map((i) => i.src));
   expect(broken.length === 0, 'guide screenshots failed to load: ' + broken.join(','));
   await host.getByTestId('guide-prev').click();
-  await host.waitForTimeout(500);
+  await host.getByTestId('guide-prev').click();
+  await host.waitForTimeout(700);
   await host.getByTestId('how-it-works').screenshot({ path: `${OUT}23-guide.png` });
   log('carousel ok,', n, 'slides');
   await host.getByTestId('create-game').click();

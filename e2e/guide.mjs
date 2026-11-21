@@ -121,6 +121,10 @@ try {
   await shot(host, '07-play');
   await host.getByTestId('roll').click();
   await host.waitForTimeout(2200);
+  await host.getByTestId('gyan-card').waitFor({ timeout: 5000 });
+  await host.getByTestId('gyan-card').screenshot({ path: `${RAW}09-gyan.png` });
+  // A drawn card or a purchase prompt can be in the way: clear it, then open a deed.
+  if (await host.getByTestId('card-modal').isVisible().catch(() => false)) await host.getByTestId('card-modal').locator('button').click({ timeout: 2000 }).catch(() => {});
   await host.locator('[data-space="6"]').click();
   await host.getByTestId('deed-modal').waitFor({ timeout: 4000 });
   await shot(host, '08-deed');

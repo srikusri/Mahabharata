@@ -142,6 +142,24 @@ try {
   const aText = await a.getByTestId('last-action').textContent();
   expect(/rolls/.test(aText), "other player also sees the host's roll summary");
 
+  // 2b. Learning card: everyone sees the same fact about the space the host landed on.
+  const gc = host.getByTestId('gyan-card');
+  await gc.waitFor({ timeout: 5000 });
+  const title = await host.getByTestId('gyan-title').textContent();
+  const landed = (await la.textContent()).match(/moves to ([^\n]+?)(Host|$)/);
+  expect(landed && landed[1].includes(title), `gyan card is about the landing space (${title})`);
+  const hostFact = await host.getByTestId('gyan-fact').textContent();
+  await a.getByTestId('gyan-card').waitFor({ timeout: 5000 });
+  expect((await a.getByTestId('gyan-fact').textContent()) === hostFact, 'both phones show the same fact');
+  expect(hostFact.length > 40, 'fact has real text');
+  const gbox = await gc.boundingBox();
+  log('gyan card:', title, '| bottom at', Math.round(gbox.y + gbox.height), 'px');
+  await host.screenshot({ path: `${OUT}/31-gyan.png`, fullPage: true });
+  await host.getByTestId('gyan-next').click();
+  expect((await host.getByTestId('gyan-fact').textContent()) !== hostFact, '"Another fact" shows a different fact');
+  await host.getByTestId('gyan-close').click();
+  expect((await host.getByTestId('gyan-card').count()) === 0, 'card closes');
+
   // 3. Auto end turn: finish the move, then do nothing.
   await toAction(host);
   await host.getByTestId('auto-end').waitFor();
@@ -156,14 +174,24 @@ try {
   expect((await a.getByTestId('auto-end-hold').textContent()).includes('Resume'), 'hold button offers resume');
   // 5. Turning the setting off removes the countdown.
   await a.getByTestId('auto-end-hold').click(); // resume
+  await a.getByTestId('settings').click();
   await a.getByTestId('auto-end-toggle').click();
-  expect((await a.getByTestId('auto-end-toggle').textContent()).includes('off'), 'toggle reads off');
+  expect((await a.getByTestId('auto-end-toggle').textContent()).includes('Off'), 'toggle reads off');
+  await a.getByTestId('settings-close').click();
   expect((await a.getByTestId('auto-end').count()) === 0, 'countdown hidden when auto-end is off');
   await a.waitForTimeout(4500);
   expect(await a.getByTestId('end-turn').isVisible(), 'with auto-end off the turn stays open');
+  // 6. Learning facts can be switched off per phone.
+  await a.getByTestId('settings').click();
+  await a.getByTestId('gyan-toggle').click();
+  await a.getByTestId('settings-close').click();
   await a.getByTestId('end-turn').click();
   await host.getByTestId('roll').waitFor({ timeout: 8000 });
-  log('hold and toggle behave');
+  await host.getByTestId('roll').click();
+  await host.getByTestId('gyan-card').waitFor({ timeout: 6000 });
+  await host.waitForTimeout(800);
+  expect((await a.getByTestId('gyan-card').count()) === 0, 'no card on the phone with facts switched off');
+  log('hold and toggles behave');
   log('\nPASS');
 } catch (e) {
   log('\nFAIL:', e.message);

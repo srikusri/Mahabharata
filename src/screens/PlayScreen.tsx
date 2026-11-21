@@ -16,9 +16,11 @@ import { TOKEN_STYLE } from '../components/Player/tokens';
 import type { TokenId } from '../multiplayer/lobby';
 import { useStore } from '../state/connectionStore';
 import { DeedModal } from '../components/Game/DeedModal';
+import { GyanCard } from '../components/Game/GyanCard';
+import { SettingsSheet } from '../components/Game/SettingsSheet';
 import { LastAction } from '../components/Game/LastAction';
 import { EndGamePanel } from '../components/Game/EndGamePanel';
-import { cardEffects } from '../ui/summary';
+import { cardEffects, gyanTrigger, type GyanTrigger } from '../ui/summary';
 import { Standings } from '../components/Game/Standings';
 import { TurnToast } from '../components/Game/TurnToast';
 import { play, sfxFor } from '../ui/sound';
@@ -32,7 +34,8 @@ export function PlayScreen() {
   const [rollKey, setRollKey] = useState(0);
   const lastVersion = useRef(-1);
   const [deed, setDeed] = useState<number | null>(null);
-  const { muted, toggleMute, autoEnd, toggleAutoEnd } = useUi();
+  const gyanOn = useUi((s) => s.gyan);
+  const [gyan, setGyan] = useState<GyanTrigger | null>(null);
   useWakeLock(!!game && game.turn.phase !== 'over');
   const targets = useMemo(() => Object.fromEntries((game?.players ?? []).filter((p) => !p.bankrupt).map((p) => [p.id, p.position])), [game]);
   const hopped = useHopPositions(targets, () => play('step'));
@@ -44,6 +47,8 @@ export function PlayScreen() {
     if (events.some((e) => e.type === 'dice')) setRollKey((k) => k + 1);
     const sounds = new Set(events.map((e) => sfxFor(e.type)).filter((x): x is NonNullable<typeof x> => !!x));
     sounds.forEach((x) => play(x));
+    const g = gyanTrigger(events, game.players);
+    if (g) setGyan(g);
     const card = events.find((e) => e.type === 'card' && e.data?.title) ?? events.find((e) => e.type === 'peek');
     if (card) setModal({ event: card, effects: card.type === 'card' ? cardEffects(events, card) : [] });
   }, [game, events]);
@@ -90,12 +95,7 @@ export function PlayScreen() {
         </h2>
         <div className="flex items-center gap-3 text-xs">
           <span className="opacity-70">Round {game.turn.round}</span>
-          <button className="rounded border border-gold/40 px-2 py-0.5" onClick={toggleMute} aria-pressed={muted} data-testid="mute" aria-label={muted ? 'Unmute sound' : 'Mute sound'}>
-            {muted ? 'Sound off' : 'Sound on'}
-          </button>
-          <button className="rounded border border-gold/40 px-2 py-0.5" onClick={toggleAutoEnd} aria-pressed={autoEnd} data-testid="auto-end-toggle" aria-label="Automatically end my turn after a pause">
-            {autoEnd ? 'Auto-end on' : 'Auto-end off'}
-          </button>
+          <SettingsSheet />
           <ConnectionBadge status={role === 'host' ? 'host' : (guest?.status ?? 'closed')} rttMs={guest?.rttMs} />
         </div>
       </header>
@@ -108,6 +108,7 @@ export function PlayScreen() {
         center={<Dice dice={game.turn.dice} rollKey={rollKey} />}
       />
       <LastAction game={game} />
+      {gyanOn && gyan && <GyanCard trigger={gyan} onClose={() => setGyan(null)} />}
       <EndGamePanel game={game} selfId={selfId} send={dispatch} />
       </div>
       <div className="mt-3 flex flex-col gap-3 lg:mt-0">

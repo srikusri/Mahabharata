@@ -1,3 +1,4 @@
+import { gyanFor } from '../../content/gyan';
 import { SPACES, GROUPS, GROUP_COLOR } from '../../engine/board';
 import { RENTS, RATHA_RENT, ASTRA_MULT, mortgageValue, buildCost } from '../../engine';
 import type { PublicState } from '../../engine';
@@ -58,6 +59,17 @@ export function DeedModal({ index, game, onClose }: { index: number; game: Publi
               {st && <div data-testid="deed-owner">Owner: <b>{owner?.name}</b>{st.mortgaged ? ' (mortgaged)' : st.level === 5 ? ' · Royal Mahal' : st.level ? ` · ${st.level} Ashrama${st.level > 1 ? 's' : ''}` : ''}</div>}
               {here.length > 0 && <div>Here now: {here.join(', ')}</div>}
             </div>
+          )}
+          {gyanFor(index) && (
+            <details className="mt-3 border-t border-black/20 pt-2 text-xs" data-testid="deed-gyan">
+              <summary className="cursor-pointer font-bold">Gyan: learn about {s.name}</summary>
+              <ul className="mt-1 list-disc space-y-1 pl-4">
+                {gyanFor(index)!.gyan.facts.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+              {gyanFor(index)!.gyan.today && <p className="mt-1 opacity-80">Today (as usually identified): {gyanFor(index)!.gyan.today}</p>}
+            </details>
           )}
           <button className="btn-gold mt-3 w-full" onClick={onClose}>Close</button>
         </div>

@@ -4,6 +4,8 @@ interface Slide {
   img: string;
   title: string;
   text: string;
+  /** A wide card rather than a full phone screen: show it whole instead of cropping it to a phone frame. */
+  wide?: boolean;
 }
 
 export const SLIDES: Slide[] = [
@@ -14,6 +16,7 @@ export const SLIDES: Slide[] = [
   { img: '05-profile', title: 'Choose a name and token', text: 'The PIN is filled in for you. Pick a token and tap Join lobby.' },
   { img: '06-lobby', title: 'Ready? Start the game', text: 'Each player taps Ready and the host taps Start game. Two to six players can play.' },
   { img: '07-play', title: 'Roll, buy, build', text: 'Roll the dice, buy kingdoms, raise Ashramas and collect rent. Pinch the board to zoom in.' },
+  { img: '09-gyan', title: 'Learn as you play', wide: true, text: 'Every time someone lands on or buys a space, a short "gyan" card tells a story about that place or object. Tap Listen to hear it read aloud.' },
   { img: '08-deed', title: 'Tap any space for its deed', text: 'See the price, the full rent table, the owner and the building level of any space.' },
 ];
 
@@ -71,8 +74,8 @@ export function HowItWorks() {
       <div ref={track} className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" tabIndex={0} aria-live="polite">
         {SLIDES.map((s, n) => (
           <figure key={s.img} className="m-0 flex w-full flex-none snap-center flex-col items-center gap-2 px-1" aria-roledescription="slide" aria-label={`${n + 1} of ${SLIDES.length}`} data-testid="guide-slide">
-            <div className="h-[300px] w-[150px] overflow-hidden rounded-2xl border-2 border-gold/60 bg-navy-2 shadow-lg">
-              <img src={src(s.img)} alt={`Screenshot: ${s.title}`} className="h-full w-full object-cover object-top" loading={n === 0 ? 'eager' : 'lazy'} draggable={false} />
+            <div className={`overflow-hidden rounded-2xl border-2 border-gold/60 bg-navy-2 shadow-lg ${s.wide ? 'w-[260px] self-center' : 'h-[300px] w-[150px]'}`}>
+              <img src={src(s.img)} alt={`Screenshot: ${s.title}`} className={s.wide ? 'w-full' : 'h-full w-full object-cover object-top'} loading={n === 0 ? 'eager' : 'lazy'} draggable={false} />
             </div>
             <figcaption className="max-w-[300px]">
               <div className="text-xs text-gold/80">Step {n + 1} of {SLIDES.length}</div>

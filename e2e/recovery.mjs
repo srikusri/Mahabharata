@@ -208,10 +208,13 @@ try {
   await a.locator('[data-space="1"]').click();
   await a.getByTestId('deed-modal').waitFor({ timeout: 3000 });
   expect((await a.getByTestId('deed-modal').textContent()).includes('260'), 'deed shows rent table');
+  expect(await a.getByTestId('deed-gyan').count() === 1, 'deed popup carries the learning facts');
   await a.screenshot({ path: `${OUT}/13-deed.png` });
   await a.getByTestId('deed-modal').getByText('Close').click();
+  await a.getByTestId('settings').click();
   await a.getByTestId('mute').click();
-  expect((await a.getByTestId('mute').textContent()).includes('off'), 'mute toggles');
+  expect((await a.getByTestId('mute').textContent()).includes('Off'), 'mute toggles');
+  await a.getByTestId('settings-close').click();
   await a.setViewportSize({ width: 1280, height: 800 });
   await a.waitForTimeout(400);
   const bb = await a.locator('[data-space="0"]').boundingBox();

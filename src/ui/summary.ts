@@ -17,3 +17,24 @@ export function lastAction(log: GameEvent[], max = 4): GameEvent[] {
 export function cardEffects(batch: GameEvent[], card: GameEvent): GameEvent[] {
   return batch.filter((e) => e.seq > card.seq && !e.private && !['turn', 'card', 'dice', 'peek'].includes(e.type));
 }
+
+export interface GyanTrigger {
+  space: number;
+  /** Event number, so every phone picks the same fact. */
+  seed: number;
+  who: string;
+  how: 'landed' | 'bought';
+}
+
+/**
+ * Which space deserves a learning card for this update: a purchase wins, otherwise the last place a token
+ * moved to (a dice move or a card move). Null when nobody landed or bought.
+ */
+export function gyanTrigger(batch: GameEvent[], players: { id: string; name: string }[]): GyanTrigger | null {
+  const nameOf = (id?: string) => players.find((p) => p.id === id)?.name ?? 'A player';
+  const buy = [...batch].reverse().find((e) => e.type === 'buy' && typeof e.data?.space === 'number');
+  if (buy) return { space: buy.data!.space as number, seed: buy.seq, who: nameOf(buy.playerId), how: 'bought' };
+  const move = [...batch].reverse().find((e) => e.type === 'move' && typeof e.data?.to === 'number');
+  if (move) return { space: move.data!.to as number, seed: move.seq, who: nameOf(move.playerId), how: 'landed' };
+  return null;
+}

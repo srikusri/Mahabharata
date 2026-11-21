@@ -65,6 +65,14 @@ need for the camera and for installing the app to the home screen.
 - **End by agreement**: after 100 completed rounds any player can propose ending; when every remaining player agrees, the greatest net worth (cash + kingdoms + buildings) wins. One "Keep playing" cancels. Change the limit with `END_VOTE_AFTER_ROUNDS` in `src/engine/data.ts`. A player who is offline cannot agree; the host can use "skip offline player" first.
 - Tests: `npm run e2e:ux` (sound, last action in view, auto end, hold, toggle) plus engine and component tests.
 
+## Gyan: learn while you play (Phase 5d)
+
+- When anyone lands on or buys a space, every phone shows a small "Gyan" card under the board with a short fact about that place, object or idea (87 facts across all 40 spaces). Facts are picked from the event number, so every phone shows the same one; "Another fact" cycles locally, "Listen" reads it aloud with the phone's own voice.
+- The deed popup (tap any space) lists every fact for that space.
+- Content lives in `src/content/gyan.ts` and is plain data, so it is easy to edit or translate. A test checks that every board space has at least two facts and that none is too long.
+- Where epic, later tradition (Puranas) and history differ, the wording says so, and modern locations are marked "as usually identified". The facts were independently fact-checked once; have a Mahabharata scholar or teacher review them before a commercial launch.
+- **Settings** (header button) now holds the per-phone switches: sound, learning facts, auto-end turn, vibration.
+
 ## How-to-play carousel
 
 The home screen has a swipeable "How it works" guide (8 steps: host, invite, join, lobby, play, deeds). Screenshots are real captures of the app in `public/guide/*.webp` (about 160 KB total, cached offline). After a UI change, regenerate them with `npm run build && npx vite preview --port 4173 &` then `npm run guide:shots`, and convert `e2e-out/guide-raw/*.png` to 360 px wide WebP. Slide text lives in `src/components/Guide/HowItWorks.tsx`.
