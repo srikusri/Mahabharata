@@ -3,6 +3,8 @@
 @tailwind utilities;
 
 html, body, #root { height: 100%; }
+@supports (height: 100dvh) { html, body { height: 100dvh; } }
+body { overflow-x: hidden; overscroll-behavior-y: none; }
 body {
   margin: 0;
   background: #0E1A33;
@@ -30,3 +32,11 @@ body {
   .token-pop, .money-pop, .flip-in, .slide-down { animation: none !important; }
   * { scroll-behavior: auto !important; }
 }
+
+/* Phase 5e: bottom sheets and compact game chrome */
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
+.sheet-up { animation: sheetUp .22s ease-out; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.fade-in { animation: fadeIn .2s ease-out; }
+.safe-b { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }
+@media (prefers-reduced-motion: reduce) { .sheet-up, .fade-in { animation: none !important; } }

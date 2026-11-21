@@ -4,11 +4,11 @@ import { TOKEN_STYLE } from '../Player/tokens';
 import type { TokenId } from '../../multiplayer/lobby';
 
 /** Right under the board: what just happened, who paid whom and who got what, without scrolling. */
-export function LastAction({ game }: { game: PublicState }) {
-  const rows: GameEvent[] = lastAction(game.log, 4);
+export function LastAction({ game, max = 4, onOpen }: { game: PublicState; max?: number; onOpen?: () => void }) {
+  const rows: GameEvent[] = lastAction(game.log, max);
   if (!rows.length) return null;
   return (
-    <section className="card !p-2" data-testid="last-action" aria-label="Last action" aria-live="polite">
+    <section className={`card !p-2 ${onOpen ? 'cursor-pointer' : ''}`} data-testid="last-action" aria-label="Last action" aria-live="polite" onClick={onOpen}>
       <ul className="flex flex-col gap-0.5 text-sm">
         {rows.map((e, i) => {
           const p = game.players.find((x) => x.id === e.playerId);

@@ -52,6 +52,8 @@ async function feed(page, parts) {
 
 /** Host shows an invite (button already visible), guest scans it and answers, host scans the answer. */
 async function pair(host, guest) {
+  const inGame = await host.getByTestId('tab-menu').isVisible().catch(() => false);
+  if (inGame && !(await host.getByTestId('add-player').isVisible().catch(() => false))) await host.getByTestId('tab-menu').click();
   await host.getByTestId('add-player').click();
   await host.getByTestId('offer-stage').waitFor({ timeout: 15000 });
   const offer = await readQr(host);
@@ -60,6 +62,7 @@ async function pair(host, guest) {
   const answer = await readQr(guest);
   await host.getByTestId('next-scan').click();
   await feed(host, answer);
+  if (await host.getByTestId('sheet-close').isVisible().catch(() => false)) await host.getByTestId('sheet-close').click();
 }
 
 const browser = await chromium.launch({ args: ['--disable-features=WebRtcHideLocalIpsWithMdns', '--allow-loopback-in-peer-connection'] });
@@ -171,6 +174,7 @@ try {
   await a.locator('summary').click();
   await dismissModal(a);
   await a.getByTestId('take-over').click();
+  if (!(await a.getByTestId('host-tools').isVisible().catch(() => false))) await a.getByTestId('tab-menu').click();
   await a.getByTestId('host-tools').waitFor({ timeout: 8000 });
   const newPin = (await a.getByTestId('host-pin').textContent()).trim();
   expect(/^\d{4}$/.test(newPin), 'no new PIN');

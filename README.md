@@ -219,6 +219,10 @@ Details and limits:
 - Game-over screen shows the standings by net worth.
 - PWA: autoUpdate service worker precaches the app shell (about 514 KiB); installable, standalone.
 
+## One-screen play UX (5e)
+
+The play screen no longer scrolls on phones. It is a fixed-height column: turn bar, board with the dice, a three-line "last action" ticker, a ribbon with every player's token and cash (active player ringed), a "me" bar, then one big primary action (Roll / Buy + Pass / End turn) and a four-tab dock. Kingdoms, Players, Chronicle and Menu (end-by-agreement, host tools, colour legend, Leave) open as standard bottom sheets that scroll inside themselves and close with the x, a backdrop tap or Esc. An end-game proposal you have not answered opens Menu by itself; a dot on Menu shows when a vote is available. Gyan facts float over the top of the board and are dismissible; "connection lost" and errors are overlays and toasts. From 1024 px the layout is two columns with the same panels inline. Rules are untouched.
+
 ## Known gaps
 
 - Reconnecting still needs a fresh QR exchange (no signalling server); only the seat and identity are preserved.

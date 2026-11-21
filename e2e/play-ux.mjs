@@ -102,6 +102,7 @@ async function toAction(page) {
     if (await vis('card-modal')) await page.getByTestId('card-modal').locator('button').click({ timeout: 2000 }).catch(() => {});
     else if (await vis('roll')) await page.getByTestId('roll').click({ timeout: 2000 }).catch(() => {});
     else if (await vis('decline')) await page.getByTestId('decline').click({ timeout: 2000 }).catch(() => {});
+    else if (await page.getByText('Daiva deck').isVisible().catch(() => false)) await page.getByText('Daiva deck').click({ timeout: 2000 }).catch(() => {});
     else if (await vis('end-turn')) {
       await page.waitForTimeout(900);
       if (!(await vis('card-modal')) && (await vis('end-turn'))) return;
@@ -136,8 +137,17 @@ try {
   await la.waitFor({ timeout: 5000 });
   const box = await la.boundingBox();
   expect(box && box.y + box.height <= 844, `last-action is within the viewport (bottom ${box && box.y + box.height})`);
-  expect(/rolls/.test(await la.textContent()), 'last-action mentions the roll');
+  expect(/rolls|moves|pays|buys|draws|salary/i.test(await la.textContent()), 'last-action summarises what just happened');
   await host.screenshot({ path: `${OUT}/30-last-action.png` });
+  const sh = await host.evaluate(() => [document.documentElement.scrollHeight, innerHeight]);
+  expect(sh[0] <= sh[1] + 1, `play screen must fit the viewport without page scroll (${sh[0]} > ${sh[1]})`);
+  for (const t of ['kingdoms', 'players', 'log', 'menu']) {
+    await host.getByTestId('tab-' + t).click();
+    await host.getByTestId('sheet-' + t).waitFor();
+    if (t === 'menu') await host.waitForTimeout(500), await host.screenshot({ path: `${OUT}/32-menu.png` });
+    await host.getByTestId('sheet-close').click();
+  }
+  log('fits one screen; all four sheets open and close');
   log('last-action visible without scrolling, bottom at', Math.round(box.y + box.height), 'px');
   const aText = await a.getByTestId('last-action').textContent();
   expect(/rolls/.test(aText), "other player also sees the host's roll summary");
